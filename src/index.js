@@ -21,7 +21,8 @@ app.use(cookieParser());
 
 app.use('/api/v1', authRoutes);
 
-app.get("/api/v1/", (req, res) => {
+app.get("/test", (req, res) => {
+  console.log('Request Received:', req.method, req.url);
   res.send("Welcome to Team Builder!");
 });
 
