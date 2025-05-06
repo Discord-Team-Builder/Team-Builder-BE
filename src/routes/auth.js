@@ -7,7 +7,7 @@ import authMiddleware from '../middleware/authMiddleware.js';
 router.get('/auth/discord', discordAuth);
 router.get('/auth/callback', discordCallback);
 router.get('/@me', authMiddleware, getMe);
-router.get('guilds', authMiddleware, getUserGuilds);
+router.get('/guilds', authMiddleware, getUserGuilds);
 // router.get('/logout', logout);
 router.post('/auth/logout', logout);
 

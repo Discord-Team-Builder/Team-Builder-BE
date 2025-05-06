@@ -2,6 +2,7 @@ import axios from 'axios';
 import User from '../models/user.model.js';
 import jwt from 'jsonwebtoken';
 import { clientId, clientSecret, redirectUri, apiUrl } from '../config/discord.js';
+import Guild from '../models/guild.model.js';
 
 
 export const discordAuth = (req, res) => {
@@ -41,21 +42,14 @@ export const discordCallback = async (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-      console.log('User Data:', userData);
-      console.log('Guilds Data:', guildsData);
-
     // 5. Save or update user
-    let user = await User.findOne({ discordId: userData.id });
-    
-    if (!user) {
-      user = await User.create({
-        discordId: userData.id,
-        username: userData.username,
-        email: userData.email,
-        avatar: userData.avatar,
-        globalName: userData.global_name,
-        guilds: guildsData.map(guild =>({
-          guildId: guild.id,
+    const guildIds = [];
+
+    for (const guild of guildsData) {
+      console.log(guild);
+      const savedGuild = await Guild.findOneAndUpdate(
+        { guildId: guild.id },
+        {
           name: guild.name,
           icon: guild.icon,
           banner: guild.banner,
@@ -63,9 +57,32 @@ export const discordCallback = async (req, res) => {
           permissions: guild.permissions,
           permissions_new: guild.permissions_new,
           features: guild.features,
-        }))
+        },
+        { new: true, upsert: true }
+      );
+
+      if (savedGuild && savedGuild._id) {
+        guildIds.push(savedGuild._id); 
+      }
+    }
+
+    // 2. Now create or update the user
+    let user = await User.findOne({ discordId: userData.id });
+
+    if (!user) {
+      user = await User.create({
+        discordId: userData.id,
+        username: userData.username,
+        email: userData.email,
+        avatar: userData.avatar,
+        globalName: userData.global_name,
       });
     }
+    user.guilds = guildIds;
+
+    await user.save();
+    console.log('User saved with guilds:', user);
+    
 
     // 6. Set user data in cookie
     const token = jwt.sign(
@@ -103,7 +120,7 @@ export const getMe = async (req, res) => {
       }
 
       // Fetch user data from the database
-      const userData = await User.findById(decodedToken.id).select('-__v -password guilds');
+      const userData = await User.findById(decodedToken.id).select('-guilds');
       if (!userData) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -131,7 +148,7 @@ export const getUserGuilds = async (req, res) => {
     }
 
     // Fetch user data from the database
-    const userData = await User.findById(decodedToken.id).select('-__v -password');
+    const userData = await User.findById(decodedToken.id).populate('guilds');
     if (!userData) {
       return res.status(404).json({ message: "User not found" });
     }

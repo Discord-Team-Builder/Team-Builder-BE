@@ -6,12 +6,7 @@ const userSchema = new mongoose.Schema({
   globalName: String,
   email: String,
   avatar: String,
-  guilds: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Guild',
-    },
-  ],
+  guilds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Guild' }]
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
