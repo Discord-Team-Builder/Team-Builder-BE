@@ -8,7 +8,6 @@ const guildSchema = new mongoose.Schema({
   owner: Boolean,
   permissions: Number,
   permissions_new: String,
-  features: [String],
   createdAt: { type: Date, default: Date.now },
 });
 

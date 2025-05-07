@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { CreateChannel } from "../controllers/guildBotController";
-const router = Router();
+// import { Router } from "express";
+// import { CreateChannel } from "../controllers/guildBotController";
+// const router = Router();
 
-router.post("/cc", CreateChannel )
+// router.post("/cc", CreateChannel )
 
-export default router;
+// export default router;

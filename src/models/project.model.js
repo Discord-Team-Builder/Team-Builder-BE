@@ -5,7 +5,7 @@ const projectSchema = new mongoose.Schema({
     name: String,
     maxTeams: Number,
     maxMembersPerTeam: Number,
-    serverId: String,
+    guildId: String,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     teams: [{ name: String, members: [String] }],
   });
