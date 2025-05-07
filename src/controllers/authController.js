@@ -3,6 +3,7 @@ import User from '../models/user.model.js';
 import jwt from 'jsonwebtoken';
 import { clientId, clientSecret, redirectUri, apiUrl } from '../config/discord.js';
 import Guild from '../models/guild.model.js';
+import transport from '../services/transporter.js';
 
 
 export const discordAuth = (req, res) => {
@@ -56,7 +57,6 @@ export const discordCallback = async (req, res) => {
           owner: guild.owner,
           permissions: guild.permissions,
           permissions_new: guild.permissions_new,
-          features: guild.features,
         },
         { new: true, upsert: true }
       );
@@ -82,8 +82,24 @@ export const discordCallback = async (req, res) => {
 
     await user.save();
     console.log('User saved with guilds:', user);
-    
 
+    const mail_options = {
+      from: '"MY APP" <myapp@example.com>',
+      to: user.email,
+      subject: 'Welcome to Team Builder',
+      text: `Hello ${user.username},\n\nWelcome to Team Builder! We're excited to have you on board.\n\nBest regards,\nTeam Builder`,
+    }
+
+    // Send welcome email
+   transport.sendMail(mail_options, (error, info) => {
+      if (error) {
+        console.error('Error sending email:', error);
+      } else {
+        console.log('Email sent:', info.response);
+      }
+    }
+    );
+    
     // 6. Set user data in cookie
     const token = jwt.sign(
       { id: user._id, username: user.username, avatar: user.avatar },
@@ -94,12 +110,12 @@ export const discordCallback = async (req, res) => {
    // 7. Set cookie with JWT token
    res.cookie('token', token, {
     httpOnly: true,
-    secure: false, // Set to true in production
+    secure: process.env.NODE_ENV === 'production', // Set to true in production
     maxAge: 7 * 24 * 60 * 60 * 1000, // Convert to milliseconds
   });
 
     return res.redirect(process.env.FRONTEND_URL + '/dashboard');
-
+    
   } catch (error) {
     console.error(error.response?.data || error);
     return res.status(500).json({ message: 'Authentication failed' });

@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   globalName: String,
   email: String,
   avatar: String,
+  projects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
   guilds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Guild' }]
 }, { timestamps: true });
 
