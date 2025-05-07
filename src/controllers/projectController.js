@@ -38,8 +38,8 @@ export const CreateProject= async (req, res) => {
 
 export const getAllProjects = async (req, res) => {
     try {
-        const projects = await Project.find({ guildId: req.user.guildId });
-        return res.status(200).json({ projects });
+        const projects = await User.findById(req.user._id).populate("projects");
+        return res.status(200).json({ projects: projects.projects });
     } catch (error) {
         console.error("Error fetching projects:", error);
         return res.status(500).json({ error: "Failed to fetch projects" });
