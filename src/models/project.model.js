@@ -6,9 +6,16 @@ const projectSchema = new mongoose.Schema({
     maxTeams: Number,
     maxMembersPerTeam: Number,
     guildId: String,
+    participants: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        role: { type: String, enum: ["admin", "member"], default: "member",  required: true },
+      }
+    ],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     teams: [{ name: String, members: [String] }],
-  });
+  }, 
+  { timestamps: true });
 
 const Project = mongoose.model("Project", projectSchema);
 export default Project;
