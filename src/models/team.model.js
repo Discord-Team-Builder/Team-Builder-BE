@@ -1,14 +1,14 @@
-import mongoose from "express";
-
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const teamSchema = new mongoose.Schema({
   name: String,
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: "Project" }, 
   members: [
     {
-      userId: String, // Discord user ID
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Reference to the User model
+      userGuildId: String, // Discord user ID
       username: String,
+      email: String,
       role: { type: String, enum: ["admin", "leader", "member"], default: "member" }, // Role within the team
       joinedAt: { type: Date, default: Date.now }, // Date when the user joined the team
       status: { type: String, enum: ["active", "inactive"], default: "active" }, // Status of the user in the team

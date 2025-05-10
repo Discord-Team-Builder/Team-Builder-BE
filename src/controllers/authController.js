@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { clientId, clientSecret, redirectUri, apiUrl } from '../config/discord.js';
 import Guild from '../models/guild.model.js';
 import transport from '../services/transporter.js';
+import sendEmail from '../services/transporter.js';
 
 
 export const discordAuth = (req, res) => {
@@ -83,22 +84,10 @@ export const discordCallback = async (req, res) => {
     await user.save();
     console.log('User saved with guilds:', user);
 
-    const mail_options = {
-      from: '"MY APP" <myapp@example.com>',
-      to: user.email,
-      subject: 'Welcome to Team Builder',
-      text: `Hello ${user.username},\n\nWelcome to Team Builder! We're excited to have you on board.\n\nBest regards,\nTeam Builder`,
-    }
 
     // Send welcome email
-   transport.sendMail(mail_options, (error, info) => {
-      if (error) {
-        console.error('Error sending email:', error);
-      } else {
-        console.log('Email sent:', info.response);
-      }
-    }
-    );
+    sendEmail.sendMail(user.email, 'Welcome to Team Builder', `Hello ${user.username},\n\nWelcome to Team Builder! We're excited to have you on board.\n\nBest regards,\nTeam Builder`  );
+    
     
     // 6. Set user data in cookie
     const token = jwt.sign(
