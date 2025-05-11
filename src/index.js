@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 8080;
 ConnectDB();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://3.80.157.5:3000' || 'http://localhost:3000', // Frontend URL
+  origin: process.env.FRONTEND_URL || 'https://team-builder-fe-8trjtbq8su.dcdeploy.cloud', // Frontend URL
   credentials: true,               // Cookies ke liye true
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'set-cookie'],
