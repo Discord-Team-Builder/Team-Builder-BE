@@ -85,7 +85,7 @@ export const discordCallback = async (req, res) => {
 
 
     // Send welcome email
-    sendEmail.sendMail(user.email, 'Welcome to Team Builder', `Hello ${user.username},\n\nWelcome to Team Builder! We're excited to have you on board.\n\nBest regards,\nTeam Builder`  );
+     sendEmail(user.email, 'Welcome to Team Builder', `Hello ${user.username},\n\nWelcome to Team Builder! We're excited to have you on board.\n\nBest regards,\nTeam Builder`  );
     
     
     // 6. Set user data in cookie
@@ -98,8 +98,8 @@ export const discordCallback = async (req, res) => {
    // 7. Set cookie with JWT token
    res.cookie('token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Set to true in production
-    sameSite: process.env.NODE_ENV === 'production' ? "none" : "Lax",
+    secure: true, // Set to true in production
+    sameSite: "none",
     maxAge: 7 * 24 * 60 * 60 * 1000, // Convert to milliseconds
   });
 
