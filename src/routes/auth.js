@@ -6,6 +6,9 @@ import authMiddleware from '../middleware/authMiddleware.js';
 // Define routes
 router.get('/auth/discord', discordAuth);
 router.get('/auth/callback', discordCallback);
+router.get('/status', authMiddleware, (req, res) => {
+  res.json({ isLoggedIn: true });
+});
 router.get('/@me', authMiddleware, getMe);
 router.get('/guilds', authMiddleware, getUserGuilds);
 // router.get('/logout', logout);

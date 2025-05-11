@@ -14,4 +14,29 @@ const transport = nodemailer.createTransport({
   }
 });
 
-export default transport;  
+const sendEmail = async (to, subject, html) => {
+  try {
+    // Verify the connection configuration
+    await transport.verify();
+  }
+  catch (error) {
+    console.error('Error verifying SMTP connection:', error);
+    throw new Error('SMTP connection verification failed');
+  }
+  // Send email
+  try {
+    await transport.sendMail({
+      from: '"Team Builder" <noreply@yourdomain.com>',
+      to,
+      subject,
+      html,
+    });
+  }
+  catch (error) {
+    console.error('Error sending email:', error);
+    throw new Error('Email sending failed');
+  }
+  
+};
+
+export default sendEmail;  
