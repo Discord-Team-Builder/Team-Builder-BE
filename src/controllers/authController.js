@@ -3,7 +3,6 @@ import User from '../models/user.model.js';
 import jwt from 'jsonwebtoken';
 import { clientId, clientSecret, redirectUri, apiUrl } from '../config/discord.js';
 import Guild from '../models/guild.model.js';
-import transport from '../services/transporter.js';
 import sendEmail from '../services/transporter.js';
 
 

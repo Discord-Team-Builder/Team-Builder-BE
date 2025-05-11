@@ -1,9 +1,7 @@
 import crypto from "crypto";
 import Invite from "../models/invite.model.js";
 import Team from "../models/team.model.js";
-import Project from "../models/project.model.js";
-import User from "../models/user.model.js";
-import sendEmail from "../utils/sendEmail"; //  nodemailer function
+import sendEmail from "../services/transporter.js"; //  nodemailer function
 
 // Called from createTeam logic
 export const sendTeamInvites = async (emails, projectId, teamId) => {

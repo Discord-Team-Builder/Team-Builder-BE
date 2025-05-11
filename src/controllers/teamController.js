@@ -1,9 +1,9 @@
-import Project from "../models/project.model";
-import Team from "../models/team.model";
-import { sendTeamInvites } from "./inviteController";
+import Project from "../models/project.model.js";
+import Team from "../models/team.model.js";
+import { sendTeamInvites } from "./inviteController.js";
 
 
-export const createTeam = async (req, res) => {
+export const CreateTeam = async (req, res) => {
     const { projectId, teamName, members } = req.body;
 
     if (!projectId || !teamName || !members) {
