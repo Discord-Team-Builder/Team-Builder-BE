@@ -47,7 +47,15 @@ export const CreateTeam = async (req, res) => {
         await newTeam.save();
         await Project.findByIdAndUpdate(projectId,{ $push: { teams: newTeam._id } },{ new: true, useFindAndModify: false });
         console.log("Members:", members);
-        const emailArray = Array.isArray(members) ? members : [members];
+        let emailArray = [];
+        try {
+        emailArray = JSON.parse(members);
+        if (!Array.isArray(emailArray)) {
+            emailArray = [emailArray];
+        }
+        } catch (err) {
+        return res.status(400).json({ error: "Invalid members format. Must be a JSON array." });
+        }
         await sendTeamInvites(emailArray, projectId, newTeam._id);
         return res.status(201).json({ message: "Team created successfully", team: newTeam });
     } catch (error) {

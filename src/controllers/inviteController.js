@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import validator from "validator";
 import Invite from "../models/invite.model.js";
 import Team from "../models/team.model.js";
 import sendEmail from "../services/transporter.js"; //  nodemailer function
@@ -7,6 +8,10 @@ import sendEmail from "../services/transporter.js"; //  nodemailer function
 export const sendTeamInvites = async (emails, projectId, teamId) => {
   console.log("emails:", emails);
   const invites = await Promise.all(emails.map(async (email) => {
+    if (!validator.isEmail(email)) {
+        console.log(`Skipping invalid email: ${email}`);
+        return null; // skip invalid emails
+      }
     const token = crypto.randomBytes(32).toString("hex");
 
     const invite = new Invite({
