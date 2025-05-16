@@ -6,7 +6,7 @@ import { sendTeamInvites } from "./inviteController.js";
 export const CreateTeam = async (req, res) => {
     const { projectId, teamName, members } = req.body;
 
-    if (!projectId || !teamName || !members) {
+    if (!projectId || !teamName ) {
         return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -44,11 +44,11 @@ export const CreateTeam = async (req, res) => {
             },
         });
 
-        await Team.save();
-        await Project.findByIdAndUpdate(projectId, {
-            $push: { teams: newTeam._id },
-        });
-        await sendTeamInvites(members, projectId, newTeam._id);
+        await newTeam.save();
+        await Project.findByIdAndUpdate(projectId,{ $push: { teams: newTeam._id } },{ new: true, useFindAndModify: false });
+        console.log("Members:", members);
+        const emailArray = Array.isArray(members) ? members : [members];
+        await sendTeamInvites(emailArray, projectId, newTeam._id);
         return res.status(201).json({ message: "Team created successfully", team: newTeam });
     } catch (error) {
         console.error("Error creating team:", error);

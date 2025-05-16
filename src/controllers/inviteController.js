@@ -5,6 +5,7 @@ import sendEmail from "../services/transporter.js"; //  nodemailer function
 
 // Called from createTeam logic
 export const sendTeamInvites = async (emails, projectId, teamId) => {
+  console.log("emails:", emails);
   const invites = await Promise.all(emails.map(async (email) => {
     const token = crypto.randomBytes(32).toString("hex");
 
@@ -62,7 +63,9 @@ export const acceptTeamInvite = async (req, res) => {
       return res.status(400).json({ error: "You are already part of the team." });
     }
 
-    team.members.push(userId);
+    team.members.push({
+      user: userId,
+    });
     await team.save();
 
     invite.accepted = true;

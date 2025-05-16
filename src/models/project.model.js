@@ -13,7 +13,7 @@ const projectSchema = new mongoose.Schema({
       }
     ],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    teams: [{ name: String, members: [String] }],
+    teams: [{ type: mongoose.Schema.Types.ObjectId, ref: "Team"  }],
   }, 
   { timestamps: true });
 
