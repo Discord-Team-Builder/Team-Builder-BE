@@ -8,14 +8,14 @@ export const CreateProject= async (req, res) => {
     const {guildId, projectName, maxTeams, maxMembersPerTeam } = req.body;
 
     if (!guildId || !projectName || !maxTeams || !maxMembersPerTeam) {
-         sendSlackNotification('Error creating project: All fields are required');
+         sendSlackNotification('user ' + req.user.username + ' request to create project: All fields are required');
         return res.status(400).json({ error: "All fields are required" });
     }
 
     try {
         const existingProject = await Project.findOne({ projectName });
         if (existingProject){
-            sendSlackNotification('Error creating project: Project already exists');
+            sendSlackNotification('user ' + req.user.username + ' request to create project: Project already exists');
             return res.status(400).json({ error: "Project already exists" });
         }
 
@@ -39,23 +39,34 @@ export const CreateProject= async (req, res) => {
         await User.findByIdAndUpdate(req.user._id, {
             $push: { projects: newProject._id },
         })
-        await sendSlackNotification(`Project created successfully: ${projectName}`);
+         sendSlackNotification('user ' + req.user.username + ' request to create project: Project created successfully');
         return res.status(201).json({ message: "Project created successfully", project: newProject });
     } catch (error) {
         console.error("Error creating project:", error);
-        sendSlackNotification('Error creating project: ' + error.message);
+        sendSlackNotification('user ' + req.user.username + ' request to create project: ' + error.message);
         return res.status(500).json({ error: "Failed to create project" });
     }
 }
 
 export const getAllProjects = async (req, res) => {
     try {
-        const projects = await User.findById(req.user._id).populate("projects");
-        sendSlackNotification('Fetched all projects successfully' + projects.projects);
+       const projects = await User.findById(req.user._id)
+            .populate({
+                path: "projects",
+                populate: {
+                    path: "teams",
+                    populate: {
+                        path: "members.user",
+                        model: "User", 
+                        select: "username globalName avatar email discordId" 
+                    }
+                }
+            });
+        sendSlackNotification(`user ${req.user.username} request to fetched all projects`);
         return res.status(200).json({ projects: projects.projects });
     } catch (error) {
         console.error("Error fetching projects:", error);
-        sendSlackNotification('Error fetching projects: ' + error.message);
+        sendSlackNotification('user ' + req.user.username + ' request to fetch all projects: ' + error.message);
         return res.status(500).json({ error: "Failed to fetch projects" });
     }
 }
@@ -65,7 +76,7 @@ export const deleteProject = async (req, res) => {
     
     // Validate ID first
     if (!mongoose.Types.ObjectId.isValid(id)) {
-        sendSlackNotification('Error deleting project: Invalid project ID format');
+        sendSlackNotification('user ' + req.user.username + ' request to delete project: Invalid project ID format');
         return res.status(400).json({ error: "Invalid project ID format" });
     }
 
@@ -74,7 +85,7 @@ export const deleteProject = async (req, res) => {
         const project = await Project.findById(id);
         
         if (!project) {
-            sendSlackNotification('Error deleting project: Project not found');
+            sendSlackNotification('user ' + req.user.username + ' request to delete project: Project not found');
             return res.status(404).json({ error: "Project not found" });
         }
 
@@ -85,7 +96,7 @@ export const deleteProject = async (req, res) => {
         );
 
         if (!isAdmin) {
-            sendSlackNotification('Error deleting project: User not authorized');
+            sendSlackNotification('user ' + req.user.username + ' request to delete project: Only admins can delete the project');
             return res.status(403).json({ error: "Authorization required" });
         }
 
@@ -96,11 +107,11 @@ export const deleteProject = async (req, res) => {
         await User.findByIdAndUpdate(req.user._id, {
             $pull: { projects: id }
         });
-        sendSlackNotification('Project deleted successfully: ' + project.name);
+        sendSlackNotification('user ' + req.user.username + ' request to delete project: Project deleted successfully');
         return res.status(200).json({ message: "Project deleted successfully" });
     } catch (error) {
         console.error("Error deleting project:", error);
-        sendSlackNotification('Error deleting project: ' + error.message);
+        sendSlackNotification('user ' + req.user.username + ' request to delete project: ' + error.message);
         return res.status(500).json({ error: "Server error" });
     }
 };
