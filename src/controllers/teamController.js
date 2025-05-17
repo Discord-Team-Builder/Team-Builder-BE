@@ -1,7 +1,13 @@
 import Project from "../models/project.model.js";
 import Team from "../models/team.model.js";
 import { sendTeamInvites } from "./inviteController.js";
+import multer from 'multer';
+import Papa from 'papaparse';
 
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+export const uploadCSV = upload.single('csvFile');
 
 export const CreateTeam = async (req, res) => {
     const { projectId, teamName, members } = req.body;
@@ -32,9 +38,56 @@ export const CreateTeam = async (req, res) => {
             return res.status(400).json({ error: "Team already exists" });
         }
 
+        let emailArray = [];
+                // Handle CSV file upload
+                if (csvFile) {
+                try {
+                    const csvString = csvFile.buffer.toString('utf8');
+                    const parsedData = Papa.parse(csvString, {
+                    header: false,
+                    skipEmptyLines: true,
+                    transform: (value) => value.trim()
+                    });
+        
+                    if (parsedData.errors.length > 0) {
+                    return res.status(400).json({
+                        error: "CSV parsing errors",
+                        details: parsedData.errors
+                    });
+                    }
+        
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    emailArray = parsedData.data
+                    .map(row => row[0])
+                    .filter(email => email && emailRegex.test(email));
+        
+                    if (emailArray.length === 0) {
+                    return res.status(400).json({
+                        error: "CSV file contains no valid email addresses"
+                    });
+                    }
+                } catch (error) {
+                    return res.status(400).json({
+                    error: "CSV processing failed",
+                    details: error.message
+                    });
+                }
+                }
+                // Handle text input fallback
+                else if (members) {
+                    try {
+                        emailArray = JSON.parse(members);
+                        if (!Array.isArray(emailArray)) {
+                            emailArray = [emailArray];
+                        }
+                    } catch (err) {
+                        return res.status(400).json({ error: "Invalid members format. Must be a JSON array." });
+                    }
+                }
+
         const maxTeams = project.maxTeams;
         const maxMembers = project.maxTeamMembers;
-        
+
            // Total members limit check
         const totalAllowedMembers = maxTeams * maxMembers;
         if (emailArray.length > totalAllowedMembers) {

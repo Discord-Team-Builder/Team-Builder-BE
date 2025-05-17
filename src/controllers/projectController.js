@@ -1,14 +1,20 @@
 import mongoose from "mongoose";
+import multer from 'multer';
+import Papa from 'papaparse';
 import Project from "../models/project.model.js";
 import User from "../models/user.model.js";
 import { sendSlackNotification } from "../utils/slackNotifier.js";
 import { sendTeamInvites } from "./inviteController.js";
 import { autoCreateTeams } from "../utils/autoCreateTeams.js";
 
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+export const uploadCSV = upload.single('csvFile');
 
 export const CreateProject= async (req, res) => {
     const {guildId, projectName, maxTeams, maxMembersPerTeam, members } = req.body;
-
+       const csvFile = req.file;
     if (!guildId || !projectName || !maxTeams || !maxMembersPerTeam) {
          sendSlackNotification('user ' + req.user.username + ' request to create project: All fields are required');
         return res.status(400).json({ error: "All fields are required" });
@@ -39,13 +45,50 @@ export const CreateProject= async (req, res) => {
         
         await newProject.save();
         let emailArray = [];
+        // Handle CSV file upload
+        if (csvFile) {
         try {
-        emailArray = JSON.parse(members);
-        if (!Array.isArray(emailArray)) {
-            emailArray = [emailArray];
+            const csvString = csvFile.buffer.toString('utf8');
+            const parsedData = Papa.parse(csvString, {
+            header: false,
+            skipEmptyLines: true,
+            transform: (value) => value.trim()
+            });
+
+            if (parsedData.errors.length > 0) {
+            return res.status(400).json({
+                error: "CSV parsing errors",
+                details: parsedData.errors
+            });
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            emailArray = parsedData.data
+            .map(row => row[0])
+            .filter(email => email && emailRegex.test(email));
+
+            if (emailArray.length === 0) {
+            return res.status(400).json({
+                error: "CSV file contains no valid email addresses"
+            });
+            }
+        } catch (error) {
+            return res.status(400).json({
+            error: "CSV processing failed",
+            details: error.message
+            });
         }
-        } catch (err) {
-        return res.status(400).json({ error: "Invalid members format. Must be a JSON array." });
+        }
+        // Handle text input fallback
+        else if (members) {
+            try {
+                emailArray = JSON.parse(members);
+                if (!Array.isArray(emailArray)) {
+                    emailArray = [emailArray];
+                }
+            } catch (err) {
+                return res.status(400).json({ error: "Invalid members format. Must be a JSON array." });
+            }
         }
         const createdTeams = await autoCreateTeams({
         emailArray,
