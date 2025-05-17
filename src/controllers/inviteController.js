@@ -5,7 +5,7 @@ import Team from "../models/team.model.js";
 import sendEmail from "../services/transporter.js"; //  nodemailer function
 
 // Called from createTeam logic
-export const sendTeamInvites = async (emails, projectId, teamId) => {
+export const sendTeamInvites = async (emails, projectId, teamId, invitedByUserId) => {
   console.log("emails:", emails);
   const invites = await Promise.all(emails.map(async (email) => {
     if (!validator.isEmail(email)) {
@@ -17,24 +17,47 @@ export const sendTeamInvites = async (emails, projectId, teamId) => {
     const invite = new Invite({
       email,
       teamId,
+      invitedBy: invitedByUserId,
       projectId,
       token,
     });
 
     await invite.save();
 
-    const inviteLink = `${process.env.FRONTEND_URL}/invite/accept?token=${token}`;
+    // Populate required fields
+    const populatedInvite = await invite.populate([
+      { path: 'teamId', select: 'name' },
+      { path: 'projectId', select: 'name' },
+      { path: 'invitedBy', select: 'name email' }
+    ]);
 
+    // URL encode text safely
+    const query = new URLSearchParams({
+      token,
+      team: populatedInvite.teamId.name,
+      project: populatedInvite.projectId.name,
+      by: populatedInvite.invitedBy.name || populatedInvite.invitedBy.email
+    }).toString()
+
+    const inviteLink = `${process.env.FRONTEND_URL}/invite/accept?${query}`;
+
+    // Send email with detailed link
     await sendEmail(email, "Team Invitation", `
-      You've been invited to join a team.
-      Click here to accept: ${inviteLink}
+      You've been invited to join a team:
+      
+      📌 Team: ${populatedInvite.teamId.name}
+      📁 Project: ${populatedInvite.projectId.name}
+      🙋 Invited By: ${populatedInvite.invitedBy.name || populatedInvite.invitedBy.email}
+
+      Click to accept: ${inviteLink}
     `);
 
     return invite;
   }));
 
-  return invites;
+  return invites.filter(Boolean);
 };
+
 
 // Called after user logs in and clicks the link
 export const acceptTeamInvite = async (req, res) => {
