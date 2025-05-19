@@ -5,13 +5,17 @@ import Team from "../models/team.model.js";
 import sendEmail from "../services/transporter.js"; //  nodemailer function
 
 // Called from createTeam logic
+
 export const sendTeamInvites = async (emails, projectId, teamId, invitedByUserId) => {
   console.log("emails:", emails);
-  const invites = await Promise.all(emails.map(async (email) => {
+  const invites = [];
+
+  for (let email of emails) {
     if (!validator.isEmail(email)) {
-        console.log(`Skipping invalid email: ${email}`);
-        return null; // skip invalid emails
-      }
+      console.log(`Skipping invalid email: ${email}`);
+      continue;
+    }
+
     const token = crypto.randomBytes(32).toString("hex");
 
     const invite = new Invite({
@@ -24,39 +28,45 @@ export const sendTeamInvites = async (emails, projectId, teamId, invitedByUserId
 
     await invite.save();
 
-    // Populate required fields
     const populatedInvite = await invite.populate([
       { path: 'teamId', select: 'name' },
       { path: 'projectId', select: 'name' },
       { path: 'invitedBy', select: 'name email' }
     ]);
 
-    // URL encode text safely
     const query = new URLSearchParams({
       token,
       team: populatedInvite.teamId.name,
       project: populatedInvite.projectId.name,
       by: populatedInvite.invitedBy.name || populatedInvite.invitedBy.email
-    }).toString()
+    }).toString();
 
     const inviteLink = `${process.env.FRONTEND_URL}/invite/accept?${query}`;
 
-    // Send email with detailed link
-    await sendEmail(email, "Team Invitation", `
-      You've been invited to join a team:
-      
-      📌 Team: ${populatedInvite.teamId.name}
-      📁 Project: ${populatedInvite.projectId.name}
-      🙋 Invited By: ${populatedInvite.invitedBy.name || populatedInvite.invitedBy.email}
+    const html = `
+      You've been invited to join a team:<br><br>
+      📌 <strong>Team:</strong> ${populatedInvite.teamId.name}<br>
+      📁 <strong>Project:</strong> ${populatedInvite.projectId.name}<br>
+      🙋 <strong>Invited By:</strong> ${populatedInvite.invitedBy.name || populatedInvite.invitedBy.email}<br><br>
+      👉 <a href="${inviteLink}">Click to accept the invite</a>
+    `;
 
-      Click to accept: ${inviteLink}
-    `);
+    try {
+      await sendEmail(email, "Team Invitation", html);
+      console.log(`✅ Email sent to ${email}`);
+    } catch (error) {
+      console.error(`❌ Failed to send email to ${email}:`, error.message);
+    }
 
-    return invite;
-  }));
+    invites.push(invite);
 
-  return invites.filter(Boolean);
+    // 🕐 Wait for 1 second before next email
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  return invites;
 };
+
 
 
 // Called after user logs in and clicks the link

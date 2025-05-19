@@ -84,7 +84,7 @@ export const discordCallback = async (req, res) => {
     console.log('User saved with guilds:', user);
 
 
-    // Send welcome email
+    // Send welcome email 
      sendEmail(user.email, 'Welcome to Team Builder', `Hello ${user.username},\n\nWelcome to Team Builder! We're excited to have you on board.\n\nBest regards,\nTeam Builder`  );
     
     
