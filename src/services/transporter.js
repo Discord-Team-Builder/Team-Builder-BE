@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { SMTP_HOST, SMTP_PORT, SMTP_AUTH_USER, SMTP_AUTH_PASS } from '../config/nodemailer.js';
+import { SMTP_HOST, SMTP_PORT, SMTP_AUTH_USER, SMTP_AUTH_PASS, MAIL_FROM } from '../config/nodemailer.js';
 
 const transport = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -26,7 +26,7 @@ const sendEmail = async (to, subject, html) => {
   // Send email
   try {
     await transport.sendMail({
-      from: '"Team Builder" <noreply@yourdomain.com>',
+      from: `${MAIL_FROM}`,
       to,
       subject,
       html,
