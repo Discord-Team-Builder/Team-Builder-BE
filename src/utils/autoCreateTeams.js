@@ -1,6 +1,7 @@
 import Team from "../models/team.model.js";
 import Project from "../models/project.model.js";
 import { sendTeamInvites } from "../controllers/inviteController.js";
+import { generateUniqueName } from "../services/uniqueNameGenerator.js";
 
 export const autoCreateTeams = async ({
   emailArray,
@@ -15,16 +16,14 @@ export const autoCreateTeams = async ({
 
   while (emailIndex < emailArray.length && teamsCreated.length < maxTeams) {
     const teamEmails = emailArray.slice(emailIndex, emailIndex + maxMembersPerTeam);
+    const teamName = generateUniqueName();
 
     const newTeam = new Team({
-      name: `Team ${teamCounter}`,
+      name: teamName,
       projectId,
       members: [],
       discord: {
         guildId,
-        roleId: "",
-        voiceChannelId: "",
-        textChannelId: "",
       },
     });
 
