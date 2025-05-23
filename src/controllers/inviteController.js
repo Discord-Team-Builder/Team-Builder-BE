@@ -2,7 +2,11 @@ import crypto from "crypto";
 import validator from "validator";
 import Invite from "../models/invite.model.js";
 import Team from "../models/team.model.js";
+import User from "../models/user.model.js";
+import GuildBot from "../config/bot.js"; // Discord bot instance
 import sendEmail from "../services/transporter.js"; //  nodemailer function
+import { CreateChannel } from "../utils/createChannel.js";
+import { ChannelType } from "discord.js"; // Discord.js types
 
 // Called from createTeam logic
 
@@ -109,6 +113,69 @@ export const acceptTeamInvite = async (req, res) => {
     invite.accepted = true;
     await invite.save();
 
+    // Create channel
+   if (!team?.discord?.voiceChannelId || !team?.discord.textChannelId) {
+  const updatedTeam = await CreateChannel({
+    guildId: team.discord.guildId,
+    channelName: team.name,
+    type: "voice",
+    teamId: team._id,
+  });
+
+  if (!updatedTeam?.discord?.voiceChannelId) {
+    return res.status(500).json({ error: "Failed to create voice channel" });
+  }
+
+  team.discord.voiceChannelId = updatedTeam.discord.voiceChannelId;
+  await team.save();
+}
+
+    // Assign user to the channel
+    const guildBot = await GuildBot.guilds.fetch(team.discord.guildId);
+    if (!guildBot) {
+      return res.status(404).json({ error: "Guild not found." });
+    }
+    
+    const userGuildId = await User.findOne({ email: invite.email });
+    const member = await guildBot.members.fetch(userGuildId.discordId);
+    if (!member) {
+      return res.status(404).json({ error: "Member not found." });
+    }
+    const channel = await guildBot.channels.fetch(team.discord.voiceChannelId);
+    if (!channel) {
+      return res.status(404).json({ error: "Channel not found." });
+    }
+    if (!channel || channel.type !== ChannelType.GuildVoice) {
+      console.error("Channel is not a voice channel:", channel?.type);
+      return res.status(400).json({ error: "Assigned channel is not a voice channel." });
+    }
+
+    // await member.voice.setChannel(channel);
+    // console.log(`User ${userId} assigned to channel ${channel.id}`);
+    // Assign role to the user
+    const serverroleid = team.discord.roleId;
+    console.log("serverroleid:", serverroleid);
+    const role = await guildBot.roles.fetch(serverroleid);
+    if (!role) {
+      return res.status(404).json({ error: "Role not found." });
+    }
+    console.log("role:", role);
+    await member.roles.add(role);
+    console.log(`Role ${role.id} assigned to user ${userId}`);
+    // Send a message to the voice channel
+    await channel.send(`Welcome to the team, ${member}!`);
+    console.log(`Message sent to voice channel ${channel.id}`);
+    // Send a message to the user
+    await member.send(`Welcome to the team, ${member}!`);
+    console.log(`Message sent to user ${member.id}`);
+    // Send a message to the project owner
+    const projectOwner = await User.findById(invite.invitedBy);
+    if (!projectOwner) {
+      return res.status(404).json({ error: "Project owner not found." });
+    }
+    await projectOwner.send(`User ${member} has joined the team ${team.name}.`);
+    console.log(`Message sent to project owner ${projectOwner.id}`);
+    
     return res.status(200).json({ message: "Joined the team successfully." });
   } catch (error) {
     console.error("Accept invite error:", error);
