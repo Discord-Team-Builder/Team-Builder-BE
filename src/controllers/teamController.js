@@ -1,5 +1,6 @@
 import Project from "../models/project.model.js";
 import Team from "../models/team.model.js";
+import { generateUniqueName } from "../services/uniqueNameGenerator.js";
 import { sendTeamInvites } from "./inviteController.js";
 import multer from 'multer';
 import Papa from 'papaparse';
@@ -103,16 +104,13 @@ export const CreateTeam = async (req, res) => {
 
         for (let i = 0; i < chunks.length && project.teams.length + createdTeams.length < maxTeams; i++) {
             const teamEmails = chunks[i];
-            const teamName = `Team ${project.teams.length + createdTeams.length + 1}`;
+            const teamName = generateUniqueName()
             const newTeam = new Team({
                 name: teamName,
                 projectId: project._id,
                 members: [],
                 discord: {
                     guildId: project.guildId,
-                    roleId: "",
-                    voiceChannelId: "",
-                    textChannelId: "",
                 },
             });
 
