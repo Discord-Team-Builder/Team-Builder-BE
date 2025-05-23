@@ -1,6 +1,6 @@
-import GuildBot from "../config/bot";
-import Project from '../models/project.model';
-import Team from "../models/team.model";
+import GuildBot from "../config/bot.js";
+import Project from '../models/project.model.js';
+import Team from "../models/team.model.js";
 import { ChannelType } from "discord.js";
 
 export const CreateChannel = async ({guildId, channelName, type = "voice", teamId }) => {
