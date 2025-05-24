@@ -6,6 +6,7 @@ import ConnectDB from "./config/db.js";
 import authRoutes from './routes/auth.js'
 import projectRoutes from './routes/project.route.js'
 import teamRoutes from './routes/team.route.js'
+import { globalErrorHandler } from "./utils/globalError.js";
 // import GuildBot from "./routes/guildBot.route.js"
 dotenv.config();
 
@@ -49,16 +50,13 @@ app.use((req, res, next) => {
   }
   next();
 });
-// Middleware to handle errors
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
+
 // Middleware to handle 404 errors
 app.use((req, res, next) => {
   res.status(404).send('Sorry, that route does not exist.');
 });
 
+app.use(globalErrorHandler);
 
 // Error-handled server start
 app.listen(PORT, '0.0.0.0', (error) => {

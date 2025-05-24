@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from 'dotenv'
+import ApiError from "../utils/api-error";
 
 dotenv.config()
 
@@ -9,7 +10,8 @@ const ConnectDB = async () => {
     console.log('MongoDB Connected');
   } catch (err) {
     console.error('Failed to connect to MongoDB:', err);
-    process.exit(1); // Exit process if DB connection fails
+    throw new ApiError(500, "Database connection failed", [err.message], err.stack);
+    // Optionally, you can log the error to an external service here
   }
 };
 

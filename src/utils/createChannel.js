@@ -2,34 +2,43 @@ import GuildBot from "../config/bot.js";
 import Project from "../models/project.model.js";
 import Team from "../models/team.model.js";
 import { ChannelType, PermissionsBitField } from "discord.js";
+import ApiError from "./api-error.js";
+import { StatusCode } from "../services/constants/statusCode.js";
 
 export const CreateChannel = async ({ guildId, channelName, type = "voice", teamId }) => {
   try {
     const guildBot = await GuildBot.guilds.fetch(guildId);
-    if (!guildBot) throw new Error("guildBot not found");
+    if (!guildBot) throw new ApiError(StatusCode.NOT_FOUND, "Guild not found", [], "Please check the guild ID.");
 
     const project = await Project.findOne({ guildId });
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new ApiError(StatusCode.NOT_FOUND, "Project not found", [], "Please check the project ID.");
 
     const team = await Team.findById(teamId).populate("members.user");
-    
-    if (!team) throw new Error("Team not found");
+    if (!team) throw new ApiError(StatusCode.NOT_FOUND, "Team not found", [], "Please check the team ID.");
+
     const role = await guildBot.roles.create({
       name: team.name,
       color: "Random",
       mentionable: true,
+    }).catch(err => {
+      console.error("Role creation failed:", err);
+      throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to create role", [err.message], err.stack);
     });
-      team.discord.roleId = role.id;
-      console.log(`Role created-cr: ${role.name} (${role.id})`);
-      console.log('teamroleid-cr:', team.discord.roleId);
-      await team.save()
+
+    team.discord.roleId = role.id;
+    await team.save()
 
     const allowedDiscordUserIds = team.members
       .map(m => m.user?.discordId)
       .filter(Boolean);
 
     if (allowedDiscordUserIds.length === 0) {
-      throw new Error("No members with linked Discord accounts.");
+      throw new ApiError(
+        StatusCode.BAD_REQUEST,
+        "No valid Discord user IDs found in team members",
+        [],
+        "Ensure team members have valid Discord accounts linked."
+      );
     }
 
     // Ensure users are in the guild member cache (important for permissions!)
@@ -89,6 +98,11 @@ export const CreateChannel = async ({ guildId, channelName, type = "voice", team
 
   } catch (err) {
     console.error("Channel creation failed:", err);
-    return null;
+    throw new ApiError(
+      StatusCode.INTERNAL_SERVER_ERROR,
+      "Failed to create channel",
+      [err.message],
+      err.stack
+    );
   }
 };
