@@ -7,6 +7,9 @@ import GuildBot from "../config/bot.js"; // Discord bot instance
 import sendEmail from "../services/transporter.js"; //  nodemailer function
 import { CreateChannel } from "../utils/createChannel.js";
 import { ChannelType } from "discord.js"; // Discord.js types
+import ApiError from "../utils/api-error.js";
+import { StatusCode } from "../services/constants/statusCode.js";
+import ApiResponse from "../utils/api-response.js";
 
 // Called from createTeam logic
 
@@ -60,6 +63,7 @@ export const sendTeamInvites = async (emails, projectId, teamId, invitedByUserId
       console.log(`✅ Email sent to ${email}`);
     } catch (error) {
       console.error(`❌ Failed to send email to ${email}:`, error.message);
+      throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to send invite email", [error.message], error.stack);
     }
 
     invites.push(invite);
@@ -83,26 +87,36 @@ export const acceptTeamInvite = async (req, res) => {
     const invite = await Invite.findOne({ token });
 
     if (!invite) {
-      return res.status(400).json({ error: "Invalid or expired invite." });
+      return res
+      .status(StatusCode.BAD_REQUEST)
+      .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "Invalid or expired invite token"));
     }
 
     if (invite.accepted) {
-      return res.status(400).json({ error: "Invite already used." });
+      return res
+      .status(StatusCode.BAD_REQUEST)
+      .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "Invite already used"));
     }
 
     if (invite.email !== userEmail) {
-      return res.status(403).json({ error: "This invite is not for your account." });
+      return res
+      .status(StatusCode.FORBIDDEN)
+      .json(new ApiResponse(StatusCode.FORBIDDEN, false, "You are not authorized to accept this invite"));
     }
 
     const team = await Team.findById(invite.teamId);
     if (!team) {
-      return res.status(404).json({ error: "Team not found." });
+      return res
+      .status(StatusCode.NOT_FOUND)
+      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Team not found"));
     }
 
     // Check if someone already used this email to join
     const alreadyMember = team.members.includes(userId);
     if (alreadyMember) {
-      return res.status(400).json({ error: "You are already part of the team." });
+      return res
+      .status(StatusCode.BAD_REQUEST)
+      .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "You are already part of the team."));
     }
 
     team.members.push({
@@ -123,7 +137,9 @@ export const acceptTeamInvite = async (req, res) => {
   });
 
   if (!updatedTeam?.discord?.voiceChannelId) {
-    return res.status(500).json({ error: "Failed to create voice channel" });
+    return res
+    .status(StatusCode.INTERNAL_SERVER_ERROR)
+    .json(new ApiResponse(StatusCode.INTERNAL_SERVER_ERROR, false, "Failed to create voice channel"));
   }
 
   team.discord.voiceChannelId = updatedTeam.discord.voiceChannelId;
@@ -133,31 +149,39 @@ export const acceptTeamInvite = async (req, res) => {
     // Assign user to the channel
     const guildBot = await GuildBot.guilds.fetch(team.discord.guildId);
     if (!guildBot) {
-      return res.status(404).json({ error: "Guild not found." });
+      return res
+      .status(StatusCode.NOT_FOUND)
+      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Guild not found"));
     }
     
     const userGuildId = await User.findOne({ email: invite.email });
     const member = await guildBot.members.fetch(userGuildId.discordId);
     if (!member) {
-      return res.status(404).json({ error: "Member not found." });
+      return res
+      .status(StatusCode.NOT_FOUND)
+      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Member not found in the guild"));
     }
     const channel = await guildBot.channels.fetch(team.discord.voiceChannelId);
     if (!channel) {
-      return res.status(404).json({ error: "Channel not found." });
+      return res
+      .status(StatusCode.NOT_FOUND)
+      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Voice channel not found"));
     }
     if (!channel || channel.type !== ChannelType.GuildVoice) {
       console.error("Channel is not a voice channel:", channel?.type);
-      return res.status(400).json({ error: "Assigned channel is not a voice channel." });
+      return res
+      .status(StatusCode.BAD_REQUEST)
+      .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "Assigned channel is not a voice channel."));
     }
 
     // await member.voice.setChannel(channel);
     // console.log(`User ${userId} assigned to channel ${channel.id}`);
     // Assign role to the user
-    const serverroleid = team.discord.roleId;
-    console.log("serverroleid:", serverroleid);
-    const role = await guildBot.roles.fetch(serverroleid);
+    const role = await guildBot.roles.fetch(team.discord.roleId);
     if (!role) {
-      return res.status(404).json({ error: "Role not found." });
+      return res
+      .status(StatusCode.NOT_FOUND)
+      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Role not found in the guild"));
     }
     console.log("role:", role);
     await member.roles.add(role);
@@ -171,14 +195,21 @@ export const acceptTeamInvite = async (req, res) => {
     // Send a message to the project owner
     const projectOwner = await User.findById(invite.invitedBy);
     if (!projectOwner) {
-      return res.status(404).json({ error: "Project owner not found." });
+      return res
+      .status(StatusCode.NOT_FOUND)
+      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Project owner not found"));
     }
     await projectOwner.send(`User ${member} has joined the team ${team.name}.`);
     console.log(`Message sent to project owner ${projectOwner.id}`);
     
-    return res.status(200).json({ message: "Joined the team successfully." });
+    return res
+    .status(StatusCode.OK)
+    .json(new ApiResponse(StatusCode.OK, true, "Invite accepted successfully", {
+      teamId: team._id,
+      teamName: team.name,
+      voiceChannelId: team.discord.voiceChannelId,
+    }));
   } catch (error) {
     console.error("Accept invite error:", error);
-    return res.status(500).json({ error: "Failed to accept invite." });
-  }
+    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to accept invite", [error.message], error.stack);}
 };

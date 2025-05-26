@@ -41,9 +41,9 @@ export const CreateTeam = async (req, res) => {
 
         let emailArray = [];
                 // Handle CSV file upload
-                if (csvFile) {
+                if (req.file) {
                 try {
-                    const csvString = csvFile.buffer.toString('utf8');
+                    const csvString = req.file.buffer.toString('utf8');
                     const parsedData = Papa.parse(csvString, {
                     header: false,
                     skipEmptyLines: true,

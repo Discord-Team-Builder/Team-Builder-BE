@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from 'dotenv'
-import ApiError from "../utils/api-error";
+import ApiError from '../utils/api-error.js'
 
 dotenv.config()
 

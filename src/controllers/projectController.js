@@ -6,6 +6,9 @@ import User from "../models/user.model.js";
 import { sendSlackNotification } from "../utils/slackNotifier.js";
 import { sendTeamInvites } from "./inviteController.js";
 import { autoCreateTeams } from "../utils/autoCreateTeams.js";
+import { StatusCode } from "../services/constants/statusCode.js";
+import ApiResponse from "../utils/api-response.js";
+import ApiError from "../utils/api-error.js";
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -17,14 +20,18 @@ export const CreateProject= async (req, res) => {
        const csvFile = req.file;
     if (!guildId || !projectName || !maxTeams || !maxMembersPerTeam) {
          sendSlackNotification('user ' + req.user.username + ' request to create project: All fields are required');
-        return res.status(400).json({ error: "All fields are required" });
+        return res
+        .status(StatusCode.BAD_REQUEST)
+        .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "All fields are required"))
     }
 
     try {
         const existingProject = await Project.findOne({ projectName });
         if (existingProject){
             sendSlackNotification('user ' + req.user.username + ' request to create project: Project already exists');
-            return res.status(400).json({ error: "Project already exists" });
+            return res
+            .status(StatusCode.BAD_REQUEST)
+            .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "Project already exists"));
         }
 
         const newProject = new Project({
@@ -56,10 +63,9 @@ export const CreateProject= async (req, res) => {
             });
 
             if (parsedData.errors.length > 0) {
-            return res.status(400).json({
-                error: "CSV parsing errors",
-                details: parsedData.errors
-            });
+            return res
+            .status(StatusCode.BAD_REQUEST)
+            .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "CSV parsing errors", parsedData.errors));
             }
 
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -68,15 +74,17 @@ export const CreateProject= async (req, res) => {
             .filter(email => email && emailRegex.test(email));
 
             if (emailArray.length === 0) {
-            return res.status(400).json({
-                error: "CSV file contains no valid email addresses"
-            });
+            return res
+            .status(StatusCode.BAD_REQUEST)
+            .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "CSV file contains no valid email addresses"));
             }
         } catch (error) {
-            return res.status(400).json({
-            error: "CSV processing failed",
-            details: error.message
-            });
+            throw new ApiError(
+                StatusCode.BAD_REQUEST,
+                "CSV processing failed",
+                [error.message],
+                error.stack
+            );
         }
         }
         // Handle text input fallback
@@ -87,7 +95,9 @@ export const CreateProject= async (req, res) => {
                     emailArray = [emailArray];
                 }
             } catch (err) {
-                return res.status(400).json({ error: "Invalid members format. Must be a JSON array." });
+                return res
+                .status(StatusCode.BAD_REQUEST)
+                .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "Invalid members format", err.message));
             }
         }
         const createdTeams = await autoCreateTeams({
@@ -99,11 +109,21 @@ export const CreateProject= async (req, res) => {
             $push: { projects: newProject._id },
         })
         sendSlackNotification('user ' + req.user.username + ' request to create project: Project created successfully');
-        return res.status(201).json({ message: "Project created successfully", project: newProject, teams: createdTeams });
+        return res
+        .status(StatusCode.CREATED)
+        .json(new ApiResponse(StatusCode.CREATED, true, "Project created successfully", {
+            project: newProject,
+            teams: createdTeams,
+        }));
     } catch (error) {
         console.error("Error creating project:", error);
         sendSlackNotification('user ' + req.user.username + ' request to create project: ' + error.message);
-        return res.status(500).json({ error: "Failed to create project" });
+        throw new ApiError(
+            StatusCode.INTERNAL_SERVER_ERROR,
+            "Failed to create project",
+            [error.message],
+            error.stack
+        );
     }
 }
 
@@ -122,11 +142,18 @@ export const getAllProjects = async (req, res) => {
                 }
             });
         sendSlackNotification(`user ${req.user.username} request to fetched all projects`);
-        return res.status(200).json({ projects: projects.projects });
+        return res
+        .status(StatusCode.OK)
+        .json(new ApiResponse(StatusCode.OK, true, "Projects fetched successfully", { projects: projects.projects }));
     } catch (error) {
         console.error("Error fetching projects:", error);
         sendSlackNotification('user ' + req.user.username + ' request to fetch all projects: ' + error.message);
-        return res.status(500).json({ error: "Failed to fetch projects" });
+        throw new ApiError(
+            StatusCode.INTERNAL_SERVER_ERROR,
+            "Failed to fetch projects",
+            [error.message],
+            error.stack
+        );
     }
 }
 
@@ -136,7 +163,9 @@ export const deleteProject = async (req, res) => {
     // Validate ID first
     if (!mongoose.Types.ObjectId.isValid(id)) {
         sendSlackNotification('user ' + req.user.username + ' request to delete project: Invalid project ID format');
-        return res.status(400).json({ error: "Invalid project ID format" });
+        return res
+        .status(StatusCode.BAD_REQUEST)
+        .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "Invalid project ID format"));
     }
 
     try {
@@ -145,7 +174,9 @@ export const deleteProject = async (req, res) => {
         
         if (!project) {
             sendSlackNotification('user ' + req.user.username + ' request to delete project: Project not found');
-            return res.status(404).json({ error: "Project not found" });
+            return res
+            .status(StatusCode.NOT_FOUND)
+            .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Project not found"));
         }
 
         // 2. Check authorization using proper ID comparison
@@ -156,7 +187,9 @@ export const deleteProject = async (req, res) => {
 
         if (!isAdmin) {
             sendSlackNotification('user ' + req.user.username + ' request to delete project: Only admins can delete the project');
-            return res.status(403).json({ error: "Authorization required" });
+            return res
+            .status(StatusCode.FORBIDDEN)
+            .json(new ApiResponse(StatusCode.FORBIDDEN, false, "Only admins can delete the project"));
         }
 
         // 3. Only delete after validation
@@ -167,10 +200,17 @@ export const deleteProject = async (req, res) => {
             $pull: { projects: id }
         });
         sendSlackNotification('user ' + req.user.username + ' request to delete project: Project deleted successfully');
-        return res.status(200).json({ message: "Project deleted successfully" });
+        return res
+        .status(StatusCode.OK)
+        .json(new ApiResponse(StatusCode.OK, true, "Project deleted successfully"));
     } catch (error) {
         console.error("Error deleting project:", error);
         sendSlackNotification('user ' + req.user.username + ' request to delete project: ' + error.message);
-        return res.status(500).json({ error: "Server error" });
+        throw new ApiError(
+            StatusCode.INTERNAL_SERVER_ERROR,
+            "Failed to delete project",
+            [error.message],
+            error.stack
+        );
     }
 };

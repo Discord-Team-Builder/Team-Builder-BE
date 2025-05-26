@@ -7,7 +7,9 @@ import authRoutes from './routes/auth.js'
 import projectRoutes from './routes/project.route.js'
 import teamRoutes from './routes/team.route.js'
 import { globalErrorHandler } from "./utils/globalError.js";
-// import GuildBot from "./routes/guildBot.route.js"
+import { StatusCode } from "./services/constants/statusCode.js";
+import ApiResponse from "./utils/api-response.js";
+import GuildBot from "./routes/guildBot.route.js";
 dotenv.config();
 
 const app = express();
@@ -29,13 +31,14 @@ app.use(cookieParser());
 app.use('/api/v1', authRoutes);
 app.use('/api/v1/project', projectRoutes);
 app.use('/api/v1/team', teamRoutes);
+app.use('/api/v1/GuildBot', GuildBot )
 // Test route
 app.get("/test", (req, res) => {
   console.log('Request Received:', req.method, req.url);
-  res.send("Welcome to Team Builder!");
+  res.send(new ApiResponse(StatusCode.OK, true, "Test route is working", { message: "Hello Team Builder!" }));
 });
 
-//TODO: app.use('api/v1/GuildBot', GuildBot )
+
 
 // Middleware to log requests
 app.use((req, res, next) => {
@@ -53,7 +56,9 @@ app.use((req, res, next) => {
 
 // Middleware to handle 404 errors
 app.use((req, res, next) => {
-  res.status(404).send('Sorry, that route does not exist.');
+  res
+  .status(StatusCode.NOT_FOUND)
+  .send(new ApiResponse(StatusCode.NOT_FOUND, false, "Not Found", null));
 });
 
 app.use(globalErrorHandler);
