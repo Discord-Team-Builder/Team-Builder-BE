@@ -5,6 +5,7 @@ const guildSchema = new mongoose.Schema({
   name: String,
   icon: String,
   banner: String,
+  botConnected: { type: Boolean, default: false },
   owner: Boolean,
   permissions: Number,
   permissions_new: String,

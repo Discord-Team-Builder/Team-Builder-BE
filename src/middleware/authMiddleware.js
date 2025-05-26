@@ -1,6 +1,9 @@
 // middlewares/authMiddleware.js
 import jwt from 'jsonwebtoken';
 import User from '../models/user.model.js';
+import { StatusCode } from '../services/constants/statusCode.js';
+import ApiResponse from '../utils/api-response.js';
+import ApiError from '../utils/api-error.js';
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -8,8 +11,8 @@ const authMiddleware = async (req, res, next) => {
 
     if (!token) {
       return res
-      .status(401)
-      .json({ message: 'Unauthorized: No token' })
+      .status(StatusCode.UNAUTHORIZED)
+      .json(new ApiResponse(StatusCode.UNAUTHORIZED, false, "Unauthorized: No token provided"));
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -18,8 +21,8 @@ const authMiddleware = async (req, res, next) => {
     const user = await User.findById(decoded.id).select('-__v -password');
     if (!user) {
       return res
-      .status(401)
-      .json({ message: 'Unauthorized: User not found' })
+      .status(StatusCode.UNAUTHORIZED)
+      .json(new ApiResponse(StatusCode.UNAUTHORIZED, false, "Unauthorized: User not found"));
     }
 
     // Attach user to request for future use
@@ -27,7 +30,12 @@ const authMiddleware = async (req, res, next) => {
 
     next(); // move to next middleware or route
   } catch (error) {
-    return res.status(401).json({ message: 'Unauthorized: Invalid token' });
+    throw new ApiError(
+      StatusCode.INTERNAL_SERVER_ERROR,
+      "Failed to authenticate user",
+      [error.message],
+      error.stack
+    );
   }
 };
 

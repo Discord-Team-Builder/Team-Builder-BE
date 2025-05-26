@@ -1,6 +1,6 @@
 import axios from "axios";
-import ApiError from "./api-error";
-import { StatusCode } from "../services/constants/statusCode";
+import ApiError from "./api-error.js";
+import { StatusCode } from "../services/constants/statusCode.js";
 
 export const sendSlackNotification = async (message) => {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;

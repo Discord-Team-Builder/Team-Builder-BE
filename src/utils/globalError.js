@@ -1,5 +1,5 @@
-import { StatusCode } from '../services/constants/statusCode';
-import ApiResponse from './api-response';
+import { StatusCode } from '../services/constants/statusCode.js';
+import ApiResponse from './api-response.js';
 
 
 export const globalErrorHandler = async (

@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits} from "discord.js";
-import ApiError from "../utils/api-error";
+import ApiError from "../utils/api-error.js";
 import dotenv from 'dotenv'
 
 dotenv.config()
