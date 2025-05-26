@@ -20,8 +20,8 @@ export const botConnect = async (req, res) => {
     // If bot is in the server, this will succeed
     if (!guildBot) {
       return res
-      .status(StatusCode.NOT_FOUND)
-      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Bot is not in this server", {
+      .status(StatusCode.ACCEPTED)
+      .json(new ApiResponse(StatusCode.ACCEPTED, false, "Bot is not in this server", {
         installLink: install_URL,
       }));
     }
@@ -35,8 +35,8 @@ export const botConnect = async (req, res) => {
       // 50001: Missing access (bot not in guild)
       // 10004: Unknown Guild (invalid ID or not in guild)
       return res
-      .status(StatusCode.NOT_FOUND)
-      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Bot is not in this server", {
+      .status(StatusCode.ACCEPTED)
+      .json(new ApiResponse(StatusCode.ACCEPTED, false, "Bot is not in this server", {
         installLink: install_URL,
       }));
     }
