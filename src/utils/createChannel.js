@@ -1,7 +1,7 @@
 import GuildBot from "../config/bot.js";
 import Project from "../models/project.model.js";
 import Team from "../models/team.model.js";
-import { ChannelType, PermissionsBitField } from "discord.js";
+import { ChannelType, PermissionsBitField  } from "discord.js";
 import ApiError from "./api-error.js";
 import { StatusCode } from "../services/constants/statusCode.js";
 
@@ -58,10 +58,10 @@ export const CreateChannel = async ({ guildId, channelName, type = "voice", team
       {
       id: guildBot.client.user.id,
       allow: [
-        PermissionFlagsBits.ViewChannel,
-        PermissionFlagsBits.SendMessages,
-        PermissionFlagsBits.EmbedLinks,
-        PermissionFlagsBits.ReadMessageHistory,
+        PermissionsBitField.Flags.ViewChannel,
+        PermissionsBitField.Flags.SendMessages,
+        PermissionsBitField.Flags.EmbedLinks,
+        PermissionsBitField.Flags.ReadMessageHistory,
       ],
     },
       {
