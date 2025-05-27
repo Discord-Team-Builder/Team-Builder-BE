@@ -56,7 +56,7 @@ export const CreateChannel = async ({ guildId, channelName, type = "voice", team
 
     const permissionOverwrites = [
       {
-      id: guildBot.user.id,
+      id: guildBot.client.user.id,
       allow: [
         PermissionFlagsBits.ViewChannel,
         PermissionFlagsBits.SendMessages,
