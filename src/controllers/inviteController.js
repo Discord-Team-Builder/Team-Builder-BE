@@ -45,7 +45,7 @@ export const sendTeamInvites = async (emails, projectId, teamId, invitedByUserId
       token,
       team: populatedInvite.teamId.name,
       project: populatedInvite.projectId.name,
-      by: populatedInvite.invitedBy.name || populatedInvite.invitedBy.email
+      by: populatedInvite.invitedBy.name || populatedInvite.invitedBy.email,
     }).toString();
 
     const inviteLink = `${process.env.FRONTEND_URL}/invite/accept?${query}`;
@@ -73,6 +73,49 @@ export const sendTeamInvites = async (emails, projectId, teamId, invitedByUserId
   }
 
   return invites;
+};
+
+
+// check valid invite token 
+
+export const isValidToken = async (req, res) => {
+  const {token} = req.query;
+  const {email} = req.user;
+
+  if (!token || !email) {
+    return res
+      .status(StatusCode.BAD_REQUEST)
+      .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "Token and email are required"));
+  }
+
+  try {
+    const invite = await Invite.findOne({ token, email });
+
+    if (!invite) {
+      return res
+        .status(StatusCode.NOT_FOUND)
+        .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Invalid or expired invite token"));
+    }
+
+    if (invite.accepted) {
+      return res
+        .status(StatusCode.BAD_REQUEST)
+        .json(new ApiResponse(StatusCode.BAD_REQUEST, false, "Invite already accepted"));
+    }
+
+    return res
+      .status(StatusCode.OK)
+      .json(new ApiResponse(StatusCode.OK, true, "Valid invite token", {
+        teamId: invite.teamId,
+        projectId: invite.projectId,
+        invitedBy: invite.invitedBy,
+      }));
+  } catch (error) {
+    console.error("Token validation error:", error);
+    return res
+      .status(StatusCode.INTERNAL_SERVER_ERROR)
+      .json(new ApiResponse(StatusCode.INTERNAL_SERVER_ERROR, false, "Failed to validate invite token", [error.message], error.stack));
+  }
 };
 
 
