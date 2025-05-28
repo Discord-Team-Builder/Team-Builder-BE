@@ -3,7 +3,7 @@ import { clientId } from "../config/discord.js";
 import { StatusCode } from "../services/constants/statusCode.js";
 import ApiResponse from "../utils/api-response.js";
 
-const install_URL= `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=268438544&integration_type=0&scope=bot+applications.commands`
+const install_URL= `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&integration_type=0&scope=bot+applications.commands`
 
 export const botConnect = async (req, res) => {
   const { guildId } = req.params;
