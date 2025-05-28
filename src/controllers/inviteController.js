@@ -186,21 +186,21 @@ export const acceptTeamInvite = async (req, res) => {
     console.log("role:", role);
     await member.roles.add(role);
     console.log(`Role ${role.id} assigned to user ${userId}`);
-    // Send a message to the voice channel
-    await channel.send(`Welcome to the team, ${member}!`);
-    console.log(`Message sent to voice channel ${channel.id}`);
-    // Send a message to the user
-    await member.send(`Welcome to the team, ${member}!`);
-    console.log(`Message sent to user ${member.id}`);
-    // Send a message to the project owner
-    const projectOwner = await User.findById(invite.invitedBy);
-    if (!projectOwner) {
-      return res
-      .status(StatusCode.NOT_FOUND)
-      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Project owner not found"));
-    }
-    await projectOwner.send(`User ${member} has joined the team ${team.name}.`);
-    console.log(`Message sent to project owner ${projectOwner.id}`);
+    // // Send a message to the voice channel
+    // await channel.send(`Welcome to the team, ${member}!`);
+    // console.log(`Message sent to voice channel ${channel.id}`);
+    // // Send a message to the user
+    // await member.send(`Welcome to the team, ${member}!`);
+    // console.log(`Message sent to user ${member.id}`);
+    // // Send a message to the project owner
+    // const projectOwner = await User.findById(invite.invitedBy);
+    // if (!projectOwner) {
+    //   return res
+    //   .status(StatusCode.NOT_FOUND)
+    //   .json(new ApiResponse(StatusCode.NOT_FOUND, false, "Project owner not found"));
+    // }
+    // await projectOwner.send(`User ${member} has joined the team ${team.name}.`);
+    // console.log(`Message sent to project owner ${projectOwner.id}`);
     
     return res
     .status(StatusCode.OK)
