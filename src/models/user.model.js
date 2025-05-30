@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
   skills: [String],
   github:  String,
   hashnode:  String,
-  pearlist: String,
+  peerlist: String,
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
