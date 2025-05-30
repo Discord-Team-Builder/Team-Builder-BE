@@ -1,5 +1,6 @@
 import axios from 'axios';
 import User from '../models/user.model.js';
+import { encrypt, decrypt } from '../utils/encryption.js';
 import jwt from 'jsonwebtoken';
 import { clientId, clientSecret, redirectUri, apiUrl } from '../config/discord.js';
 import Guild from '../models/guild.model.js';
@@ -7,6 +8,22 @@ import sendEmail from '../services/transporter.js';
 import { StatusCode } from '../services/constants/statusCode.js';
 import ApiResponse from '../utils/api-response.js';
 import ApiError from '../utils/api-error.js';
+import { upsertGuildsAndGetIds } from '../utils/upsertGuilds.js';
+
+async function refreshDiscordToken(refreshToken) {
+  const params = new URLSearchParams();
+  params.append('client_id', clientId);
+  params.append('client_secret', clientSecret);
+  params.append('grant_type', 'refresh_token');
+  params.append('refresh_token', refreshToken);
+  params.append('redirect_uri', redirectUri);
+
+  const { data } = await axios.post(`${apiUrl}/oauth2/token`, params, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+
+  return data; // includes new access_token and refresh_token
+}
 
 export const discordAuth = (req, res) => {
   const scope = 'identify email guilds';
@@ -35,8 +52,8 @@ export const discordCallback = async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
 
-    const accessToken = tokenData.access_token;
-
+    const accessToken = tokenData.access_token ;
+    const refreshToken = tokenData.refresh_token ;
     // 2. Fetch user data from Discord
     const { data: userData } = await axios.get(`${apiUrl}/users/@me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -48,27 +65,7 @@ export const discordCallback = async (req, res) => {
     });
 
     // 5. Save or update user
-    const guildIds = [];
-
-    for (const guild of guildsData) {
-      console.log(guild);
-      const savedGuild = await Guild.findOneAndUpdate(
-        { guildId: guild.id },
-        {
-          name: guild.name,
-          icon: guild.icon,
-          banner: guild.banner,
-          owner: guild.owner,
-          permissions: guild.permissions,
-          permissions_new: guild.permissions_new,
-        },
-        { new: true, upsert: true }
-      );
-
-      if (savedGuild && savedGuild._id) {
-        guildIds.push(savedGuild._id); 
-      }
-    }
+    const guildIds  = await upsertGuildsAndGetIds(guildsData);
 
     // 2. Now create or update the user
     let user = await User.findOne({ discordId: userData.id });
@@ -83,12 +80,12 @@ export const discordCallback = async (req, res) => {
       });
     }
     user.guilds = guildIds;
-
+    user.discordAccessToken = encrypt(accessToken) ;
+    user.discordRefreshToken = encrypt(refreshToken) ;
     await user.save();
-    console.log('User saved with guilds:', user);
-
 
     // Send welcome email 
+   
      sendEmail(user.email, 'Welcome to Team Builder', `Hello ${user.username},\n\nWelcome to Team Builder! We're excited to have you on board.\n\nBest regards,\nTeam Builder`  );
     
     
@@ -108,7 +105,6 @@ export const discordCallback = async (req, res) => {
    
     // Convert to milliseconds
   });
-  console.log('token', token)
 
     return res.redirect(process.env.FRONTEND_URL + '/dashboard');
     
@@ -173,17 +169,52 @@ export const getUserGuilds = async (req, res) => {
     }
 
     // Fetch user data from the database
-    const userData = await User.findById(decodedToken.id).populate('guilds');
-    if (!userData) {
+    const user = await User.findById(decodedToken.id)
+    if (!user || !user.discordAccessToken) {
       return res
-      .status(StatusCode.NOT_FOUND)
-      .json(new ApiResponse(StatusCode.NOT_FOUND, false, "User not found",) );
+        .status(StatusCode.NOT_FOUND)
+        .json(new ApiResponse(StatusCode.NOT_FOUND, false, "User or access token not found"));
     }
 
+    // Fetch latest guilds from Discord API
+    
+    let accessToken = decrypt(user.discordAccessToken) ;
+
+    // Try initial request
+    let guildsData;
+    try {
+        const { data } = await axios.get(`${apiUrl}/users/@me/guilds`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        guildsData = data;
+      } catch (error) {
+        if (err.response?.status === 401) {
+        // Refresh the token
+        const newTokenData = await refreshAccessToken(decrypt(user.discordRefreshToken));
+        user.discordAccessToken = encrypt(newTokenData.access_token);
+        user.discordRefreshToken = encrypt(newTokenData.refresh_token);
+        await user.save();
+
+        // Retry the API call
+        const { data: guildsData } = await axios.get(`${apiUrl}/users/@me/guilds`, {
+          headers: { Authorization: `Bearer ${newTokenData.access_token}` },
+        });
+        guildsData = data;
+       
+      } else {
+        throw err;
+      }
+    }
+
+    const guildIds  = await upsertGuildsAndGetIds(guildsData);
+    user.guilds = guildIds;
+    await user.save();
+
     // Return user guilds
+    const updatedGuilds = await Guild.find({ _id: { $in: guildIds } });
     return res
     .status(StatusCode.OK)
-    .json(new ApiResponse(StatusCode.OK, true, "User guilds fetched successfully", userData.guilds));
+    .json(new ApiResponse(StatusCode.OK, true, "User guilds fetched successfully", updatedGuilds));
   } catch (error) {
     console.error(error);
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to fetch user guilds", [error.message], error.stack);}
@@ -196,7 +227,7 @@ export const logout = (req, res) => {
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("User logging out:", decoded.username || decoded.id);
+      // console.log("User logging out:", decoded.username || decoded.id);
     } else {
       console.log("No token found. Maybe already logged out.");
       return res
